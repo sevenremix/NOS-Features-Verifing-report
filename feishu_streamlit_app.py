@@ -92,20 +92,21 @@ st.markdown("""
     }
     
     /* Info/Code blocks/Notifications - Unified Dark Appearance */
-    .stCode, div[data-testid="stCodeBlock"], .stNotification, div[data-testid="stNotification"] {
+    .stCode, div[data-testid="stCodeBlock"], .stNotification, div[data-testid="stNotification"], [data-testid="stSidebar"] pre {
         background-color: #1A1A1A !important;
         border: 1px solid #333333 !important;
         border-radius: 8px !important;
         color: #E0E0E0 !important;
     }
+    /* Targeted fix for the white background in code blocks */
+    [data-testid="stSidebar"] [data-testid="stCodeBlock"], [data-testid="stSidebar"] pre, [data-testid="stSidebar"] code {
+        background-color: #1A1A1A !important;
+        color: #FFFFFF !important;
+    }
     /* Ensure code text is readable and doesn't have its own background */
     .stCode code, div[data-testid="stCodeBlock"] code {
         background-color: transparent !important;
         color: #FFFFFF !important;
-    }
-    /* Remove default icons background from info box if any */
-    div[data-testid="stNotification"] > div {
-        background-color: transparent !important;
     }
 
     /* File Uploader Section */
