@@ -1,0 +1,17 @@
+# Python secrets
+feishu_secrets.json
+.streamlit/secrets.toml
+
+# Excel/Temp files
+*.xlsx
+temp_report_*
+Feature_TestCase_report_*
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local env
+.env
+venv/
+.venv/
