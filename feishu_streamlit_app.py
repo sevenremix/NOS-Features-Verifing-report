@@ -71,22 +71,49 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
     }
     
-    /* Buttons */
-    .stButton>button {
-        background-color: #2D2D2D; color: #FFFFFF;
-        border: 1px solid #3D3D3D; border-radius: 8px;
-        transition: all 0.3s ease;
+    /* Buttons - Unified Style for all buttons */
+    .stButton>button, .stLinkButton>a, .stFileUploader button {
+        background-color: #1E1E1E !important; 
+        color: #FFFFFF !important;
+        border: 1px solid #333333 !important; 
+        border-radius: 8px !important;
+        transition: all 0.3s ease !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 45px !important;
+        font-weight: 500 !important;
     }
-    .stButton>button:hover { background-color: #3D3D3D; border-color: #4D4D4D; }
+    .stButton>button:hover, .stLinkButton>a:hover, .stFileUploader button:hover { 
+        background-color: #2D2D2D !important; 
+        border-color: #4D4D4D !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+    }
     
-    /* File Uploader */
-    .stFileUploader section { background-color: #1E1E1E !important; border: 1px dashed #3D3D3D !important; }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { background-color: #121212; }
-    .stTabs [data-baseweb="tab"] { color: #888; }
-    .stTabs [data-baseweb="tab"]:hover { color: #FFF; }
-    .stTabs [aria-selected="true"] { color: #00C853 !important; border-bottom-color: #00C853 !important; }
+    /* Info/Code blocks/Notifications - Unified Dark Appearance */
+    .stCode, div[data-testid="stCodeBlock"], .stNotification, div[data-testid="stNotification"] {
+        background-color: #1A1A1A !important;
+        border: 1px solid #333333 !important;
+        border-radius: 8px !important;
+        color: #E0E0E0 !important;
+    }
+    /* Ensure code text is readable and doesn't have its own background */
+    .stCode code, div[data-testid="stCodeBlock"] code {
+        background-color: transparent !important;
+        color: #FFFFFF !important;
+    }
+    /* Remove default icons background from info box if any */
+    div[data-testid="stNotification"] > div {
+        background-color: transparent !important;
+    }
+
+    /* File Uploader Section */
+    .stFileUploader section { 
+        background-color: #121212 !important; 
+        border: 1px dashed #333333 !important; 
+        border-radius: 12px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -113,14 +140,14 @@ with st.sidebar:
     
     st.divider()
     st.header("🔗 快捷入口")
-    st.link_button("📊 打开项目进度多维表格", 
-                   "https://datrokeshu1.feishu.cn/base/D4CubiG74anXpkshxapcw13JnkA?table=tbl0CHX04hJOaz1n&view=vewHn4PwrI", 
+    st.link_button("📂 打开飞书云端存储目录", 
+                   "https://datrokeshu1.feishu.cn/drive/folder/QarWfaJ6Cl84Y8dY0i6cSKQwnjf", 
                    use_container_width=True)
     
     st.divider()
     st.markdown("### 📋 规格模板库")
     st.info(f"当前源：`Formatted_Feature_Source`")
-    if st.button("查看模板信息"):
+    if st.button("查看模板详情", use_container_width=True):
         st.code(f"SS_TOKEN: {TEMPLATE_SS_TOKEN}\nSHEET_ID: {TEMPLATE_SHEET_ID}")
     
     st.divider()
