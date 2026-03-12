@@ -112,6 +112,12 @@ with st.sidebar:
             st.warning("⚠️ 提示：凭证无效或已过期，请检查权限设置。")
     
     st.divider()
+    st.header("🔗 快捷入口")
+    st.link_button("📊 打开项目进度多维表格", 
+                   "https://datrokeshu1.feishu.cn/base/D4CubiG74anXpkshxapcw13JnkA?table=tbl0CHX04hJOaz1n&view=vewHn4PwrI", 
+                   use_container_width=True)
+    
+    st.divider()
     st.markdown("### 📋 规格模板库")
     st.info(f"当前源：`Formatted_Feature_Source`")
     if st.button("查看模板信息"):
