@@ -36,40 +36,46 @@ class FeishuUploader:
         self._load_secrets()
 
     def _load_secrets(self):
-        """Load credentials from the secrets file or Streamlit secrets."""
-        # Priority 1: Local JSON file
+        """Load credentials from the secrets file or Streamlit secrets, with priority fallback."""
+        # Step 1: Try Streamlit Secrets (usually for Cloud)
+        try:
+            import streamlit as st
+            # Check for scoped secrets [feishu] first
+            if "feishu" in st.secrets:
+                s = st.secrets["feishu"]
+                self.app_id = s.get("app_id") or self.app_id
+                self.app_secret = s.get("app_secret") or self.app_secret
+                self.default_parent_node = s.get("parent_node") or self.default_parent_node
+                self.user_access_token = s.get("user_access_token") or self.user_access_token
+                self.refresh_token = s.get("refresh_token") or self.refresh_token
+                logger.info("Feishu: Configuration loaded/merged from Streamlit `st.secrets`.")
+            else:
+                # Fallback to global secrets (in case user didn't use [feishu] header)
+                self.app_id = st.secrets.get("app_id") or self.app_id
+                self.app_secret = st.secrets.get("app_secret") or self.app_secret
+                self.default_parent_node = st.secrets.get("parent_node") or self.default_parent_node
+        except ImportError:
+            pass # Streamlit not installed
+        except Exception as e:
+            logger.debug(f"Streamlit secrets not accessible: {e}")
+
+        # Step 2: Try Local JSON file (usually for local development, overrides Cloud for testing)
         if os.path.exists(self.secrets_file):
             try:
                 with open(self.secrets_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.app_id = data.get('app_id')
-                    self.app_secret = data.get('app_secret')
-                    self.default_parent_node = data.get('parent_node')
-                    self.user_access_token = data.get('user_access_token')
-                    self.refresh_token = data.get('refresh_token')
-                    logger.info(f"Feishu: Loaded secrets from {self.secrets_file}")
-                    return
+                    # Only override if keys exist and aren't empty
+                    if data.get('app_id'): self.app_id = data.get('app_id')
+                    if data.get('app_secret'): self.app_secret = data.get('app_secret')
+                    if data.get('parent_node'): self.default_parent_node = data.get('parent_node')
+                    if data.get('user_access_token'): self.user_access_token = data.get('user_access_token')
+                    if data.get('refresh_token'): self.refresh_token = data.get('refresh_token')
+                    logger.info(f"Feishu: Configuration merged from local {self.secrets_file}.")
             except Exception as e:
                 logger.error(f"Error loading {self.secrets_file}: {e}")
 
-        # Priority 2: Streamlit Secrets
-        try:
-            import streamlit as st
-            if "feishu" in st.secrets:
-                s = st.secrets["feishu"]
-                self.app_id = s.get("app_id")
-                self.app_secret = s.get("app_secret")
-                self.default_parent_node = s.get("parent_node")
-                self.user_access_token = s.get("user_access_token")
-                self.refresh_token = s.get("refresh_token")
-                logger.info("Feishu: Loaded secrets from Streamlit `st.secrets`")
-                return
-        except ImportError:
-            pass # Streamlit not installed
-        except Exception as e:
-            logger.error(f"Error loading secrets from Streamlit: {e}")
-
-        logger.warning("Feishu: No secrets found in local file or Streamlit secrets.")
+        if not self.app_id or not self.app_secret:
+            logger.warning("Feishu: No app_id or app_secret found in any source.")
 
 
     def _save_tokens(self):

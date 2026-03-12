@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import time
 import datetime
+import json
 from feishu_uploader import FeishuUploader, upload_to_feishu
 from Feature_Case_Merging import run_merge
 
@@ -10,15 +11,19 @@ def get_config(key, default=None):
     # Try local file
     if os.path.exists('feishu_secrets.json'):
         try:
-            with open('feishu_secrets.json', 'r') as f:
+            with open('feishu_secrets.json', 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 if key in data: return data[key]
         except: pass
     # Try Streamlit Secrets
     try:
         import streamlit as st
+        # Scoped
         if "feishu" in st.secrets and key in st.secrets["feishu"]:
             return st.secrets["feishu"][key]
+        # Global
+        if key in st.secrets:
+            return st.secrets[key]
     except: pass
     return default
 
@@ -94,10 +99,17 @@ st.divider()
 with st.sidebar:
     st.header("⚙️ 系统状态")
     uploader = FeishuUploader()
-    if uploader.authenticate():
-        st.success("飞书连接：正常")
+    auth_success = uploader.authenticate()
+    
+    if auth_success:
+        identity = "机器人" if uploader.tenant_access_token and not uploader.user_access_token else "个人身份"
+        st.success(f"飞书连接：正常 ({identity})")
     else:
         st.error("飞书连接：未授权")
+        if not uploader.app_id or not uploader.app_secret:
+            st.warning("⚠️ 提示：未检测到 App ID 或 Secret。请在 Secrets 中配置 [feishu] 分组。")
+        else:
+            st.warning("⚠️ 提示：凭证无效或已过期，请检查权限设置。")
     
     st.divider()
     st.markdown("### 📋 规格模板库")
