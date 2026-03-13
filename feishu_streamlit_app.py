@@ -27,8 +27,24 @@ def get_config(key, default=None):
     except: pass
     return default
 
-TEMPLATE_SS_TOKEN = get_config("template_ss_token", "PGwJsSGGqhdukAtkIH8curLWnnb")
-TEMPLATE_SHEET_ID = get_config("template_sheet_id", "0Atghg")
+@st.cache_data(ttl=3600)
+def get_dynamic_tokens():
+    """Dynamically discover tokens if not provided in secrets."""
+    uploader = FeishuUploader()
+    if not uploader.authenticate():
+        return None, None
+    return uploader.discover_feature_source("Formatted_Feature_Source")
+
+# --- INITIAL CONFIG ---
+# Try to get from st.secrets or local file first
+TEMPLATE_SS_TOKEN = get_config("template_ss_token")
+TEMPLATE_SHEET_ID = get_config("template_sheet_id")
+
+# If still missing, try dynamic discovery
+if not TEMPLATE_SS_TOKEN or not TEMPLATE_SHEET_ID:
+    d_token, d_sheet = get_dynamic_tokens()
+    TEMPLATE_SS_TOKEN = TEMPLATE_SS_TOKEN or d_token or "PGwJsSGGqhdukAtkIH8curLWnnb"
+    TEMPLATE_SHEET_ID = TEMPLATE_SHEET_ID or d_sheet or "0Atghg"
 
 # --- PAGE CONFIG ---
 st.set_page_config(

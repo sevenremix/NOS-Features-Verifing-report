@@ -321,6 +321,28 @@ class FeishuUploader:
                     return f.get("token"), f.get("type")
         return None, None
 
+    def discover_feature_source(self, name="Formatted_Feature_Source"):
+        """
+        Dynamically find the spreadsheet token and the first sheet's ID.
+        Returns (spreadsheet_token, sheet_id) or (None, None).
+        """
+        logger.info(f"Dynamically discovering source: {name}...")
+        token, f_type = self.find_file_by_name(name)
+        if not token or f_type != "sheet":
+            logger.warning(f"Feature source '{name}' not found or not a spreadsheet.")
+            return None, None
+        
+        # Now get the first sheet ID
+        meta = self.list_sheets(token)
+        if meta and meta.get("code") == 0:
+            sheets = meta.get("data", {}).get("sheets", [])
+            if sheets:
+                first_id = sheets[0].get("sheetId")
+                logger.info(f"Discovered: {name} [{token}] -> Sheet [{first_id}]")
+                return token, first_id
+        
+        return token, None
+
     def add_new_sheet(self, spreadsheet_token, title):
         """Add a new sheet to an existing spreadsheet (v2)."""
         url = f"{self.base_url}/sheets/v2/spreadsheets/{spreadsheet_token}/sheets_batch_update"
