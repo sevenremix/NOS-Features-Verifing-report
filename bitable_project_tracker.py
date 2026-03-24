@@ -9,26 +9,44 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION LOADER ---
-def get_config(key, default=None):
+def get_config(key, default=None, required=False):
+    val = None
     # Try local file
     if os.path.exists('feishu_secrets.json'):
         try:
-            with open('feishu_secrets.json', 'r') as f:
+            with open('feishu_secrets.json', 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                if key in data: return data[key]
+                if key in data: val = data[key]
         except: pass
     # Try Streamlit Secrets
-    try:
+    if val is None:
+        try:
+            import streamlit as st
+            if "feishu" in st.secrets and key in st.secrets["feishu"]:
+                val = st.secrets["feishu"][key]
+            elif key in st.secrets:
+                val = st.secrets[key]
+        except: pass
+
+    # Validation: treat empty/whitespace strings as None
+    if isinstance(val, str) and not val.strip():
+        val = None
+
+    if val is not None: return val
+
+    if required and default is None:
         import streamlit as st
-        if "feishu" in st.secrets and key in st.secrets["feishu"]:
-            return st.secrets["feishu"][key]
-    except: pass
+        st.error(f"❌ 缺少必要配置项: `{key}` (Bitable)")
+        st.info("请检查 `feishu_secrets.json` 或云端配置，并确保值不为空。")
+        st.stop()
     return default
 
-BITABLE_APP_TOKEN = get_config("bitable_app_token", "D4CubiG74anXpkshxapcw13JnkA")
-BITABLE_TABLE_ID = get_config("bitable_table_id", "tbl0CHX04hJOaz1n")
-BITABLE_VIEW_ID = get_config("bitable_view_id", "vewBynJP8r")  # 本周数据
-BITABLE_FIELD_ID = get_config("bitable_field_id", "fld0tWfQiB") # Items 字段
+# --- BITABLE SETTINGS ---
+# Strict validation for all Bitable related keys
+BITABLE_APP_TOKEN = get_config("bitable_app_token", required=True)
+BITABLE_TABLE_ID = get_config("bitable_table_id", required=True)
+BITABLE_VIEW_ID = get_config("bitable_view_id", required=True)
+BITABLE_FIELD_ID = get_config("bitable_field_id", "fld0tWfQiB") # Field ID is still optional with default
 
 def update_view_filter(uploader, app_token, table_id, view_id, date_str):
     """

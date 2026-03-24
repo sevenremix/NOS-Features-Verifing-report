@@ -7,24 +7,34 @@ from feishu_uploader import FeishuUploader, upload_to_feishu
 from Feature_Case_Merging import run_merge
 
 # --- CONFIGURATION LOADER ---
-def get_config(key, default=None):
+def get_config(key, default=None, required=False):
+    val = None
     # Try local file
     if os.path.exists('feishu_secrets.json'):
         try:
             with open('feishu_secrets.json', 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                if key in data: return data[key]
+                if key in data: val = data[key]
         except: pass
     # Try Streamlit Secrets
-    try:
-        import streamlit as st
-        # Scoped
-        if "feishu" in st.secrets and key in st.secrets["feishu"]:
-            return st.secrets["feishu"][key]
-        # Global
-        if key in st.secrets:
-            return st.secrets[key]
-    except: pass
+    if val is None:
+        try:
+            if "feishu" in st.secrets and key in st.secrets["feishu"]:
+                val = st.secrets["feishu"][key]
+            elif key in st.secrets:
+                val = st.secrets[key]
+        except: pass
+    
+    # Validation: treat empty/whitespace strings as None
+    if isinstance(val, str) and not val.strip():
+        val = None
+
+    if val is not None: return val
+    
+    if required and default is None:
+        st.error(f"❌ 缺少必要配置项: `{key}`")
+        st.info("请检查 `feishu_secrets.json` 或云端 Secrets 配置，并确保值不为空。")
+        st.stop()
     return default
 
 @st.cache_data(ttl=3600)
@@ -35,16 +45,12 @@ def get_dynamic_tokens():
         return None, None
     return uploader.discover_feature_source("Formatted_Feature_Source")
 
-# --- INITIAL CONFIG ---
-# Try to get from st.secrets or local file first
-TEMPLATE_SS_TOKEN = get_config("template_ss_token")
-TEMPLATE_SHEET_ID = get_config("template_sheet_id")
-
-# If still missing, try dynamic discovery
-if not TEMPLATE_SS_TOKEN or not TEMPLATE_SHEET_ID:
-    d_token, d_sheet = get_dynamic_tokens()
-    TEMPLATE_SS_TOKEN = TEMPLATE_SS_TOKEN or d_token or "PGwJsSGGqhdukAtkIH8curLWnnb"
-    TEMPLATE_SHEET_ID = TEMPLATE_SHEET_ID or d_sheet or "0Atghg"
+# --- INITIAL CONFIG (Pre-load) ---
+APP_ID = get_config("app_id")
+APP_SECRET = get_config("app_secret")
+PARENT_NODE = get_config("parent_node")
+TEMPLATE_SS_TOKEN = get_config("Feature_source_token")
+TEMPLATE_SHEET_ID = get_config("Feature_source_sheet_id")
 
 # --- PAGE CONFIG ---
 st.set_page_config(
@@ -57,78 +63,79 @@ st.set_page_config(
 # --- CUSTOM CSS (Deep Grey Theme) ---
 st.markdown("""
 <style>
-    /* Hide SideNav for Multi-page (since we are back to single page) */
-    [data-testid="stSidebarNav"] { display: none !important; }
-    
-    /* Main background */
-    .stApp, [data-testid="stAppViewContainer"] {
-        background-color: #121212;
+    /* Premium Dark Theme */
+    .stApp {
+        background: radial-gradient(circle at top left, #121212, #0A0A0A);
         color: #E0E0E0;
     }
     
-    /* Sidebar */
-    [data-testid="stSidebar"], .stSidebar {
-        background-color: #1A1A1A !important;
-        border-right: 1px solid #333333;
-    }
-    [data-testid="stSidebar"] * {
-        color: #E0E0E0 !important;
+    /* Sidebar glassmorphism */
+    [data-testid="stSidebar"] {
+        background-color: rgba(26, 26, 26, 0.9) !important;
+        backdrop-filter: blur(10px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
     
-    /* Top Header/Toolbar */
-    header[data-testid="stHeader"] {
-        background-color: #121212 !important;
-        color: #E0E0E0 !important;
+    /* Header and Typography */
+    h1, h2, h3 {
+        background: linear-gradient(90deg, #FFFFFF, #B0B0B0);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700 !important;
     }
     
-    /* Typography */
-    h1, h2, h3, h4, .stMarkdown {
-        color: #FFFFFF !important;
-        font-family: 'Inter', sans-serif;
+    /* Premium Buttons */
+    .stButton>button {
+        background: linear-gradient(135deg, #1E1E1E 0%, #2D2D2D 100%) !important;
+        color: #00E5FF !important;
+        border: 1px solid rgba(0, 229, 255, 0.3) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .stButton>button:hover {
+        background: linear-gradient(135deg, #2D2D2D 0%, #3D3D3D 100%) !important;
+        border-color: #00E5FF !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(0, 229, 255, 0.2) !important;
     }
     
-    /* Buttons - Unified Style for all buttons */
-    .stButton>button, .stLinkButton>a, .stFileUploader button {
-        background-color: #1E1E1E !important; 
-        color: #FFFFFF !important;
-        border: 1px solid #333333 !important; 
-        border-radius: 8px !important;
-        transition: all 0.3s ease !important;
-        text-decoration: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        height: 45px !important;
-        font-weight: 500 !important;
-    }
-    .stButton>button:hover, .stLinkButton>a:hover, .stFileUploader button:hover { 
-        background-color: #2D2D2D !important; 
-        border-color: #4D4D4D !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
-    }
-    
-    /* Info/Code blocks/Notifications - Unified Dark Appearance */
-    .stCode, div[data-testid="stCodeBlock"], .stNotification, div[data-testid="stNotification"], [data-testid="stSidebar"] pre {
-        background-color: #1A1A1A !important;
-        border: 1px solid #333333 !important;
-        border-radius: 8px !important;
-        color: #E0E0E0 !important;
-    }
-    /* Targeted fix for the white background in code blocks */
-    [data-testid="stSidebar"] [data-testid="stCodeBlock"], [data-testid="stSidebar"] pre, [data-testid="stSidebar"] code {
-        background-color: #1A1A1A !important;
-        color: #FFFFFF !important;
-    }
-    /* Ensure code text is readable and doesn't have its own background */
-    .stCode code, div[data-testid="stCodeBlock"] code {
-        background-color: transparent !important;
-        color: #FFFFFF !important;
+    /* Cards (Container sections) */
+    div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column"] > div {
+        background: rgba(30, 30, 30, 0.5);
+        padding: 2.5rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 3rem;
     }
 
-    /* File Uploader Section */
-    .stFileUploader section { 
-        background-color: #121212 !important; 
-        border: 1px dashed #333333 !important; 
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: transparent !important;
+        gap: 24px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent !important;
+        color: #888888 !important;
+        border: none !important;
+        font-weight: 500 !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #00E5FF !important;
+        border-bottom: 2px solid #00E5FF !important;
+    }
+
+    /* Bitalbe Sync & Status Styling */
+    .stNotification, [data-testid="stNotification"] {
+        background-color: #1A1A1A !important;
+        border: 1px solid #333333 !important;
+        border-radius: 10px !important;
+    }
+
+    /* Expander styling */
+    .stExpander {
+        background: rgba(30, 30, 30, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 12px !important;
     }
 </style>
@@ -186,26 +193,33 @@ with tab1:
             with open(temp_test_path, "wb") as f:
                 f.write(test_file.getvalue())
             
-            with st.status("正在启动引擎...", expanded=True) as status:
+            with st.expander("📊 实时处理进度及结果说明", expanded=True):
+                # --- RUNTIME STRICT VALIDATION ---
+                get_config("app_id", required=True)
+                get_config("app_secret", required=True)
+                get_config("parent_node", required=True)
+                get_config("Feature_source_token", required=True)
+                get_config("Feature_source_sheet_id", required=True)
+
                 # Step 1: Fetch Cloud Data
-                status.write("📡 正在从飞书云端拉取最新的规格模板...")
+                st.write("📡 正在从飞书云端拉取最新的规格模板...")
                 feature_data = uploader.get_sheet_values(TEMPLATE_SS_TOKEN, TEMPLATE_SHEET_ID)
                 if not feature_data:
-                    status.update(label="❌ 无法获取云端规格", state="error")
+                    st.error("❌ 无法获取云端规格")
                     st.stop()
                 
                 # Step 2: Merge in memory
-                status.write("🧠 正在进行逻辑合并与统计计算...")
+                st.write("🧠 正在进行逻辑合并与统计计算...")
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_name = f"Feature_TestCase_report_{timestamp}.xlsx"
                 merge_result_path = run_merge(feature_data, temp_test_path, output_file=output_name)
                 
                 if not merge_result_path:
-                    status.update(label="❌ 合并逻辑执行出错", state="error")
+                    st.error("❌ 合并逻辑执行出错")
                     st.stop()
                 
                 # 4. Upload to Feishu and Convert
-                status.update(label="📤 正在上传并转换为云端在线表...", state="running")
+                st.write("📤 正在上传并转换为云端在线表...")
                 feishu_res = upload_to_feishu(merge_result_path, convert_to_sheet=True)
                 if feishu_res and feishu_res.get("code") == 0:
                     st.write("✅ 已同步至飞书 Drive")
@@ -214,7 +228,7 @@ with tab1:
                     st.stop()
                 
                 # 5. Sync to Bitable Project Tracker
-                status.update(label="🔄 正在同步项目进度至多维表格 (Bitable)...", state="running")
+                st.write("🔄 正在同步项目进度至多维表格 (Bitable)...")
                 from bitable_project_tracker import sync_report_to_bitable
                 sync_res = sync_report_to_bitable(merge_result_path)
                 if sync_res:
@@ -222,7 +236,7 @@ with tab1:
                 else:
                     st.warning("⚠️ Bitable 同步失败，请检查脚本日志")
                 
-                status.update(label="✨ 处理全部完成！已生成报表并更新进度。", state="complete")
+                st.success("✨ 处理全部完成！已生成报表并更新进度。")
                 st.balloons()
                 st.success(f"🎉 **大功告成！** 报表已保存至飞书，项目进度已同步。")
             
